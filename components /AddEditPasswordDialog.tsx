@@ -73,7 +73,7 @@ export function AddEditPasswordDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>Add Password Entry</DialogTitle>
+            <DialogTitle>Добавить пароль</DialogTitle>
             <Button
               variant="ghost"
               size="icon"
@@ -88,31 +88,31 @@ export function AddEditPasswordDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="title">Title *</Label>
+              <Label htmlFor="title">Название *</Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g., Gmail, Facebook"
+                placeholder="напр., Gmail, Facebook"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="url">Website</Label>
+              <Label htmlFor="url">Сайт</Label>
               <Input
                 id="url"
                 type="url"
                 value={formData.url}
                 onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                placeholder="e.g., gmail.com"
+                placeholder="напр., gmail.com"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="username">Username/Email *</Label>
+              <Label htmlFor="username">Логин/Email *</Label>
               <Input
                 id="username"
                 value={formData.username}
@@ -123,7 +123,7 @@ export function AddEditPasswordDialog({
             </div>
 
             <div>
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">Категория</Label>
               <Select
                 value={formData.category}
                 onValueChange={(value) => setFormData({ ...formData, category: value })}
@@ -132,57 +132,57 @@ export function AddEditPasswordDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Social">Social</SelectItem>
-                  <SelectItem value="Work">Work</SelectItem>
-                  <SelectItem value="Finance">Finance</SelectItem>
-                  <SelectItem value="Entertainment">Entertainment</SelectItem>
-                  <SelectItem value="Shopping">Shopping</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  <SelectItem value="Социальные сети">Социальные сети</SelectItem>
+                  <SelectItem value="Работа">Работа</SelectItem>
+                  <SelectItem value="Финансы">Финансы</SelectItem>
+                  <SelectItem value="Развлечения">Развлечения</SelectItem>
+                  <SelectItem value="Покупки">Покупки</SelectItem>
+                  <SelectItem value="Другое">Другое</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div>
-            <Label htmlFor="password">Password *</Label>
+            <Label htmlFor="password">Пароль *</Label>
             <Input
               id="password"
               type="text"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="Your secure password"
+              placeholder="Ваш надёжный пароль"
               required
             />
           </div>
 
           <div>
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">Заметки</Label>
             <Textarea
               id="notes"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Optional notes about this account"
+              placeholder="Дополнительные заметки об этом аккаунте"
               rows={3}
             />
           </div>
 
           <div className="flex gap-3 pt-2">
             <Button type="submit" className="flex-1">
-              Save Password
+              Сохранить пароль
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              Отмена
             </Button>
           </div>
         </form>
 
         {/* Password Generator Section */}
         <div className="border-t pt-4 mt-4">
-          <h3 className="mb-4">Password Generator</h3>
+          <h3 className="mb-4">Генератор паролей</h3>
           <PasswordGenerator onUsePassword={handleUseGeneratedPassword} />
         </div>
       </DialogContent>

@@ -14,40 +14,55 @@ export function PasswordGenerator({ onUsePassword }: { onUsePassword?: (password
   const [includeSymbols, setIncludeSymbols] = useState(true);
   const [generatedPassword, setGeneratedPassword] = useState('');
 
-  const generatePassword = () => {
-    let charset = '';
-    if (includeLowercase) charset += 'abcdefghijklmnopqrstuvwxyz';
-    if (includeUppercase) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    if (includeNumbers) charset += '0123456789';
-    if (includeSymbols) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-    if (charset === '') {
-      toast.error('Please select at least one character type');
+  const generatePassword = async () => {
+    let hasAtLeastOne = includeLowercase || includeUppercase || includeNumbers || includeSymbols;
+    if (!hasAtLeastOne) {
+      toast.error('Выберите хотя бы один тип символов');
       return;
     }
 
-    let password = '';
-    for (let i = 0; i < length[0]; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    try {
+      const response = await fetch('http://localhost:8080/vault/entries/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          length: length[0],
+          lowercase: includeLowercase,
+          uppercase: includeUppercase,
+          digits: includeNumbers,
+          symbols: includeSymbols,
+        }),
+      });
+
+      if (response.status === 200) {
+        const password = await response.text();
+        setGeneratedPassword(password);
+      } else {
+        toast.error('Не удалось сгенерировать пароль');
+      }
+    } catch (error) {
+      toast.error('Ошибка подключения к серверу');
     }
-    setGeneratedPassword(password);
   };
 
   const copyToClipboard = () => {
     if (generatedPassword) {
       navigator.clipboard.writeText(generatedPassword);
-      toast.success('Password copied to clipboard');
+      toast.success('Пароль скопирован в буфер обмена');
     }
   };
 
   return (
     <div className="space-y-4">
       <div>
-        <Label className="mb-2 block">Length: {length[0]}</Label>
+        <Label className="mb-2 block">Длина: {length[0]}</Label>
         <Slider
           value={length}
           onValueChange={setLength}
-          min={8}
+          min={6}
           max={32}
           step={1}
           className="mt-2"
@@ -62,7 +77,7 @@ export function PasswordGenerator({ onUsePassword }: { onUsePassword?: (password
             onCheckedChange={(checked) => setIncludeUppercase(checked as boolean)}
           />
           <label htmlFor="uppercase" className="cursor-pointer">
-            Uppercase (A-Z)
+            Заглавные (A-Z)
           </label>
         </div>
         <div className="flex items-center space-x-2">
@@ -72,7 +87,7 @@ export function PasswordGenerator({ onUsePassword }: { onUsePassword?: (password
             onCheckedChange={(checked) => setIncludeLowercase(checked as boolean)}
           />
           <label htmlFor="lowercase" className="cursor-pointer">
-            Lowercase (a-z)
+            Строчные (a-z)
           </label>
         </div>
         <div className="flex items-center space-x-2">
@@ -82,7 +97,7 @@ export function PasswordGenerator({ onUsePassword }: { onUsePassword?: (password
             onCheckedChange={(checked) => setIncludeNumbers(checked as boolean)}
           />
           <label htmlFor="numbers" className="cursor-pointer">
-            Numbers (0-9)
+            Цифры (0-9)
           </label>
         </div>
         <div className="flex items-center space-x-2">
@@ -92,14 +107,14 @@ export function PasswordGenerator({ onUsePassword }: { onUsePassword?: (password
             onCheckedChange={(checked) => setIncludeSymbols(checked as boolean)}
           />
           <label htmlFor="symbols" className="cursor-pointer">
-            Symbols (!@#$...)
+            Символы (!@#$...)
           </label>
         </div>
       </div>
 
       <Button onClick={generatePassword} className="w-full" type="button">
         <RefreshCw className="mr-2 h-4 w-4" />
-        Generate Password
+        Сгенерировать пароль
       </Button>
 
       {generatedPassword && (
@@ -110,7 +125,7 @@ export function PasswordGenerator({ onUsePassword }: { onUsePassword?: (password
           <div className="flex gap-2">
             <Button onClick={copyToClipboard} variant="outline" className="flex-1" type="button">
               <Copy className="mr-2 h-4 w-4" />
-              Copy
+              Копировать
             </Button>
             {onUsePassword && (
               <Button
@@ -119,7 +134,7 @@ export function PasswordGenerator({ onUsePassword }: { onUsePassword?: (password
                 className="flex-1"
                 type="button"
               >
-                Use This Password
+                Использовать этот пароль
               </Button>
             )}
           </div>

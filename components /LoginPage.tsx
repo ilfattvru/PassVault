@@ -20,7 +20,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     rememberMe: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!isLogin && formData.password !== formData.confirmPassword) {
@@ -33,9 +33,33 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       return;
     }
 
-    // Симуляция успешного входа/регистрации
-    toast.success(isLogin ? 'Вход выполнен успешно!' : 'Регистрация завершена!');
-    onLogin();
+    try {
+      const url = isLogin 
+        ? 'http://localhost:8080/auth/login'
+        : 'http://localhost:8080/auth/register';
+      
+      const body = isLogin 
+        ? { login: formData.email, password: formData.password }
+        : { login: formData.email, password: formData.password, passwordConfirm: formData.confirmPassword };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (response.status === 200) {
+        toast.success(isLogin ? 'Вход выполнен успешно!' : 'Регистрация завершена!');
+        onLogin();
+      } else {
+        const errorText = await response.text();
+        toast.error(errorText || 'Произошла ошибка');
+      }
+    } catch (error) {
+      toast.error('Ошибка подключения к серверу');
+    }
   };
 
   return (

@@ -33,24 +33,35 @@ export function VaultApp() {
   const [editingPassword, setEditingPassword] = useState<Password | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Load passwords from localStorage on mount
+  // Load passwords from backend on mount
   useEffect(() => {
-    const stored = localStorage.getItem('passwords');
-    if (stored) {
+    const loadPasswords = async () => {
       try {
-        setPasswords(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to load passwords:', e);
+        const response = await fetch('http://localhost:8080/vault/entries/all', {
+          credentials: 'include',
+        });
+        if (response.status === 200) {
+          const data = await response.json();
+          const formattedPasswords = data.map((item: any) => ({
+            id: crypto.randomUUID(),
+            title: item.title,
+            username: item.email,
+            password: item.data,
+            url: item.website,
+            category: item.categoryName,
+            notes: '',
+            createdAt: Date.now(),
+          }));
+          setPasswords(formattedPasswords);
+        }
+      } catch (error) {
+        console.error('Failed to load passwords:', error);
       }
-    }
+    };
+    loadPasswords();
   }, []);
 
-  // Save passwords to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('passwords', JSON.stringify(passwords));
-  }, [passwords]);
-
-  const handleSavePassword = (passwordData: Omit<Password, 'id' | 'createdAt'>) => {
+  const handleSavePassword = async (passwordData: Omit<Password, 'id' | 'createdAt'>) => {
     if (editingPassword) {
       // Update existing password
       setPasswords(
@@ -60,17 +71,40 @@ export function VaultApp() {
             : p
         )
       );
-      toast.success('Password updated successfully');
+      toast.success('Пароль обновлен успешно');
       setEditingPassword(null);
     } else {
-      // Add new password
-      const newPassword: Password = {
-        ...passwordData,
-        id: crypto.randomUUID(),
-        createdAt: Date.now(),
-      };
-      setPasswords([newPassword, ...passwords]);
-      toast.success('Password saved successfully');
+      // Add new password via backend
+      try {
+        const response = await fetch('http://localhost:8080/vault/entries/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            title: passwordData.title,
+            website: passwordData.url || '',
+            email: passwordData.username,
+            categoryName: passwordData.category,
+            data: passwordData.password,
+          }),
+        });
+
+        if (response.status === 200) {
+          const newPassword: Password = {
+            ...passwordData,
+            id: crypto.randomUUID(),
+            createdAt: Date.now(),
+          };
+          setPasswords([newPassword, ...passwords]);
+          toast.success('Пароль сохранен успешно');
+        } else {
+          toast.error('Не удалось сохранить пароль');
+        }
+      } catch (error) {
+        toast.error('Ошибка подключения к серверу');
+      }
     }
   };
 
