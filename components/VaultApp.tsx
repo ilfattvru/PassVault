@@ -170,6 +170,7 @@ export function VaultApp() {
           },
           credentials: 'include',
           body: JSON.stringify({
+            id: 0,
             title: passwordData.title,
             website: passwordData.url || '',
             email: passwordData.username,
