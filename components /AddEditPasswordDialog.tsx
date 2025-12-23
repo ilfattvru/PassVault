@@ -102,7 +102,6 @@ export function AddEditPasswordDialog({
               <Label htmlFor="url">Сайт</Label>
               <Input
                 id="url"
-                type="url"
                 value={formData.url}
                 onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                 placeholder="напр., gmail.com"

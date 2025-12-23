@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { PasswordItem, type Password } from './PasswordItem';
 import { AddEditPasswordDialog } from './AddEditPasswordDialog';
 import { Dashboard } from './Dashboard';
+import { ThemeToggle } from './ThemeToggle';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -26,6 +27,7 @@ import {
 
 export function VaultApp() {
   const [passwords, setPasswords] = useState<Password[]>([]);
+  const [allPasswords, setAllPasswords] = useState<Password[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [currentView, setCurrentView] = useState<'dashboard' | 'vault'>('dashboard');
@@ -33,17 +35,26 @@ export function VaultApp() {
   const [editingPassword, setEditingPassword] = useState<Password | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Load passwords from backend on mount
+  const checkAuthAndRedirect = (response: Response) => {
+    if (response.status === 403) {
+      window.location.href = '/login';
+      return true;
+    }
+    return false;
+  };
+
+  // Load all passwords once on mount
   useEffect(() => {
-    const loadPasswords = async () => {
+    const loadAllPasswords = async () => {
       try {
         const response = await fetch('http://localhost:8080/vault/entries/all', {
           credentials: 'include',
         });
+        if (checkAuthAndRedirect(response)) return;
         if (response.status === 200) {
           const data = await response.json();
           const formattedPasswords = data.map((item: any) => ({
-            id: crypto.randomUUID(),
+            id: item.id.toString(), // Используем ID от бекенда
             title: item.title,
             username: item.email,
             password: item.data,
@@ -52,26 +63,102 @@ export function VaultApp() {
             notes: '',
             createdAt: Date.now(),
           }));
+          setAllPasswords(formattedPasswords);
           setPasswords(formattedPasswords);
         }
       } catch (error) {
         console.error('Failed to load passwords:', error);
       }
     };
-    loadPasswords();
+    loadAllPasswords();
   }, []);
+
+  // Filter passwords by category
+  useEffect(() => {
+    if (selectedCategory === 'All') {
+      setPasswords(allPasswords);
+    } else {
+      const loadCategoryPasswords = async () => {
+        try {
+          const url = `http://localhost:8080/vault/entries?categoryName=${encodeURIComponent(getCategoryNameInRussian(selectedCategory))}`;
+          
+          const response = await fetch(url, {
+            credentials: 'include',
+          });
+          if (checkAuthAndRedirect(response)) return;
+          if (response.status === 200) {
+            const data = await response.json();
+            const formattedPasswords = data.map((item: any) => ({
+              id: item.id.toString(), // Используем ID от бекенда
+              title: item.title,
+              username: item.email,
+              password: item.data,
+              url: item.website,
+              category: item.categoryName,
+              notes: '',
+              createdAt: Date.now(),
+            }));
+            setPasswords(formattedPasswords);
+          }
+        } catch (error) {
+          console.error('Failed to load passwords:', error);
+        }
+      };
+      
+      if (allPasswords.length > 0) {
+        loadCategoryPasswords();
+      }
+    }
+  }, [selectedCategory, allPasswords]);
+
+  const getCategoryNameInRussian = (category: string) => {
+    const categoryMap: { [key: string]: string } = {
+      'Social': 'Социальные сети',
+      'Work': 'Работа',
+      'Finance': 'Финансы',
+      'Entertainment': 'Развлечения',
+      'Shopping': 'Покупки',
+      'Other': 'Другое'
+    };
+    return categoryMap[category] || category;
+  };
 
   const handleSavePassword = async (passwordData: Omit<Password, 'id' | 'createdAt'>) => {
     if (editingPassword) {
-      // Update existing password
-      setPasswords(
-        passwords.map((p) =>
-          p.id === editingPassword.id
-            ? { ...passwordData, id: p.id, createdAt: p.createdAt }
-            : p
-        )
-      );
-      toast.success('Пароль обновлен успешно');
+      // Update existing password via backend
+      try {
+        const response = await fetch(`http://localhost:8080/vault/entries/update/${editingPassword.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            id: editingPassword.id,
+            title: passwordData.title,
+            website: passwordData.url || '',
+            email: passwordData.username,
+            categoryName: passwordData.category,
+            data: passwordData.password,
+          }),
+        });
+
+        if (checkAuthAndRedirect(response)) return;
+        if (response.status === 200) {
+          setPasswords(
+            passwords.map((p) =>
+              p.id === editingPassword.id
+                ? { ...passwordData, id: p.id, createdAt: p.createdAt }
+                : p
+            )
+          );
+          toast.success('Пароль обновлен успешно');
+        } else {
+          toast.error('Не удалось обновить пароль');
+        }
+      } catch (error) {
+        toast.error('Ошибка подключения к серверу');
+      }
       setEditingPassword(null);
     } else {
       // Add new password via backend
@@ -91,6 +178,7 @@ export function VaultApp() {
           }),
         });
 
+        if (checkAuthAndRedirect(response)) return;
         if (response.status === 200) {
           const newPassword: Password = {
             ...passwordData,
@@ -117,11 +205,26 @@ export function VaultApp() {
     setDeleteId(id);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteId) {
-      setPasswords(passwords.filter((p) => p.id !== deleteId));
-      toast.success('Password deleted successfully');
-      setDeleteId(null);
+      try {
+        const response = await fetch(`http://localhost:8080/vault/entries/${deleteId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (checkAuthAndRedirect(response)) return;
+        if (response.status === 200) {
+          setPasswords(passwords.filter((p) => p.id !== deleteId));
+          toast.success('Пароль удален успешно');
+        } else {
+          toast.error('Не удалось удалить пароль');
+        }
+        
+      } catch(error) {
+        toast.error('Ошибка подключения к серверу');
+      } finally {
+        setDeleteId(null);
+      }
     }
   };
 
@@ -136,15 +239,12 @@ export function VaultApp() {
       password.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (password.url && password.url.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesCategory =
-      selectedCategory === 'All' || password.category === selectedCategory;
-
-    return matchesSearch && matchesCategory;
+    return matchesSearch;
   });
 
   const getCategoryCount = (category: string) => {
-    if (category === 'All') return passwords.length;
-    return passwords.filter((p) => p.category === category).length;
+    if (category === 'All') return allPasswords.length;
+    return allPasswords.filter((p) => p.category === category).length;
   };
 
   return (
@@ -152,19 +252,22 @@ export function VaultApp() {
       {/* App Header */}
       <div className="border-b bg-card">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex gap-2 justify-center">
-            <Button
-              variant={currentView === 'dashboard' ? 'default' : 'ghost'}
-              onClick={() => setCurrentView('dashboard')}
-            >
-              Панель управления
-            </Button>
-            <Button
-              variant={currentView === 'vault' ? 'default' : 'ghost'}
-              onClick={() => setCurrentView('vault')}
-            >
-              Хранилище
-            </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant={currentView === 'dashboard' ? 'default' : 'ghost'}
+                onClick={() => setCurrentView('dashboard')}
+              >
+                Панель управления
+              </Button>
+              <Button
+                variant={currentView === 'vault' ? 'default' : 'ghost'}
+                onClick={() => setCurrentView('vault')}
+              >
+                Хранилище
+              </Button>
+            </div>
+            <ThemeToggle />
           </div>
         </div>
       </div>
@@ -194,14 +297,14 @@ export function VaultApp() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">Все {getCategoryCount('All')}</SelectItem>
-                  <SelectItem value="Social">Соцсети {getCategoryCount('Social')}</SelectItem>
-                  <SelectItem value="Work">Работа {getCategoryCount('Work')}</SelectItem>
-                  <SelectItem value="Finance">Финансы {getCategoryCount('Finance')}</SelectItem>
+                  <SelectItem value="Social">Социальные сети {getCategoryCount("Социальные сети")}</SelectItem>
+                  <SelectItem value="Work">Работа {getCategoryCount('Работа')}</SelectItem>
+                  <SelectItem value="Finance">Финансы {getCategoryCount('Финансы')}</SelectItem>
                   <SelectItem value="Entertainment">
-                    Развлечения {getCategoryCount('Entertainment')}
+                    Развлечения {getCategoryCount('Развлечения')}
                   </SelectItem>
-                  <SelectItem value="Shopping">Покупки {getCategoryCount('Shopping')}</SelectItem>
-                  <SelectItem value="Other">Другое {getCategoryCount('Other')}</SelectItem>
+                  <SelectItem value="Shopping">Покупки {getCategoryCount('Покупки')}</SelectItem>
+                  <SelectItem value="Other">Другое {getCategoryCount('Другое')}</SelectItem>
                 </SelectContent>
               </Select>
 

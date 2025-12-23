@@ -35,18 +35,18 @@ export function Dashboard({ passwords }: DashboardProps) {
 
   const getCategoryCounts = () => {
     const counts: Record<string, number> = {
-      Social: 0,
-      Work: 0,
-      Finance: 0,
-      Entertainment: 0,
-      Shopping: 0,
-      Other: 0,
+      "Социальные сети": 0,
+      Работа: 0,
+      Финансы: 0,
+      Развлечения: 0,
+      Покупки: 0,
+      Другое: 0,
     };
     passwords.forEach(p => {
       if (counts[p.category] !== undefined) {
         counts[p.category]++;
       } else {
-        counts['Other']++;
+        counts['Другое']++;
       }
     });
     return counts;

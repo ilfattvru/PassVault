@@ -2,6 +2,7 @@ import { Shield, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card } from './ui/card';
+import { ThemeToggle } from './ThemeToggle';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Checkbox } from './ui/checkbox';
@@ -47,12 +48,17 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(body),
       });
 
       if (response.status === 200) {
-        toast.success(isLogin ? 'Вход выполнен успешно!' : 'Регистрация завершена!');
-        onLogin();
+        if (isLogin) {
+          toast.success('Вход выполнен успешно!');
+          onLogin();
+        } else {
+          toast.success('Регистрация завершена!');
+        }
       } else {
         const errorText = await response.text();
         toast.error(errorText || 'Произошла ошибка');
@@ -64,6 +70,9 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-20">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
