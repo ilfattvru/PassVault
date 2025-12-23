@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Navigation } from './components /Navigation';
-import { HomePage } from './components /HomePage';
-import { LoginPage } from './components /LoginPage';
-import { VaultApp } from './components /VaultApp';
+import { Navigation } from './components/Navigation';
+import { HomePage } from './components/HomePage';
+import { LoginPage } from './components/LoginPage';
+import { VaultApp } from './components/VaultApp';
 import { Toaster } from 'sonner';
 
 type Page = 'home' | 'login' | 'app';
