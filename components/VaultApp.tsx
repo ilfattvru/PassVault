@@ -43,33 +43,34 @@ export function VaultApp() {
     return false;
   };
 
+  const loadAllPasswords = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/vault/entries/all', {
+        credentials: 'include',
+      });
+      if (checkAuthAndRedirect(response)) return;
+      if (response.status === 200) {
+        const data = await response.json();
+        const formattedPasswords = data.map((item: any) => ({
+          id: item.id.toString(),
+          title: item.title,
+          username: item.email,
+          password: item.data,
+          url: item.website,
+          category: item.categoryName,
+          notes: item.note || '',
+          createdAt: Date.now(),
+        }));
+        setAllPasswords(formattedPasswords);
+        setPasswords(formattedPasswords);
+      }
+    } catch (error) {
+      console.error('Failed to load passwords:', error);
+    }
+  };
+
   // Load all passwords once on mount
   useEffect(() => {
-    const loadAllPasswords = async () => {
-      try {
-        const response = await fetch('http://localhost:8080/vault/entries/all', {
-          credentials: 'include',
-        });
-        if (checkAuthAndRedirect(response)) return;
-        if (response.status === 200) {
-          const data = await response.json();
-          const formattedPasswords = data.map((item: any) => ({
-            id: item.id.toString(), // Используем ID от бекенда
-            title: item.title,
-            username: item.email,
-            password: item.data,
-            url: item.website,
-            category: item.categoryName,
-            notes: '',
-            createdAt: Date.now(),
-          }));
-          setAllPasswords(formattedPasswords);
-          setPasswords(formattedPasswords);
-        }
-      } catch (error) {
-        console.error('Failed to load passwords:', error);
-      }
-    };
     loadAllPasswords();
   }, []);
 
@@ -89,13 +90,13 @@ export function VaultApp() {
           if (response.status === 200) {
             const data = await response.json();
             const formattedPasswords = data.map((item: any) => ({
-              id: item.id.toString(), // Используем ID от бекенда
+              id: item.id.toString(),
               title: item.title,
               username: item.email,
               password: item.data,
               url: item.website,
               category: item.categoryName,
-              notes: '',
+              notes: item.note || '',
               createdAt: Date.now(),
             }));
             setPasswords(formattedPasswords);
@@ -140,18 +141,13 @@ export function VaultApp() {
             email: passwordData.username,
             categoryName: passwordData.category,
             data: passwordData.password,
+            note: passwordData.notes || '',
           }),
         });
 
         if (checkAuthAndRedirect(response)) return;
         if (response.status === 200) {
-          setPasswords(
-            passwords.map((p) =>
-              p.id === editingPassword.id
-                ? { ...passwordData, id: p.id, createdAt: p.createdAt }
-                : p
-            )
-          );
+          await loadAllPasswords(); // Перезагружаем все пароли
           toast.success('Пароль обновлен успешно');
         } else {
           toast.error('Не удалось обновить пароль');
@@ -176,17 +172,13 @@ export function VaultApp() {
             email: passwordData.username,
             categoryName: passwordData.category,
             data: passwordData.password,
+            note: passwordData.notes || '',
           }),
         });
 
         if (checkAuthAndRedirect(response)) return;
         if (response.status === 200) {
-          const newPassword: Password = {
-            ...passwordData,
-            id: crypto.randomUUID(),
-            createdAt: Date.now(),
-          };
-          setPasswords([newPassword, ...passwords]);
+          await loadAllPasswords(); // Перезагружаем все пароли
           toast.success('Пароль сохранен успешно');
         } else {
           toast.error('Не удалось сохранить пароль');
@@ -215,7 +207,7 @@ export function VaultApp() {
         });
         if (checkAuthAndRedirect(response)) return;
         if (response.status === 200) {
-          setPasswords(passwords.filter((p) => p.id !== deleteId));
+          await loadAllPasswords(); // Перезагружаем все пароли
           toast.success('Пароль удален успешно');
         } else {
           toast.error('Не удалось удалить пароль');

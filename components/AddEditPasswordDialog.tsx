@@ -32,7 +32,7 @@ export function AddEditPasswordDialog({
     username: '',
     password: '',
     url: '',
-    category: 'Other',
+    category: 'Другое',
     notes: '',
   });
 
@@ -52,7 +52,7 @@ export function AddEditPasswordDialog({
         username: '',
         password: '',
         url: '',
-        category: 'Other',
+        category: 'Другое',
         notes: '',
       });
     }
@@ -74,14 +74,6 @@ export function AddEditPasswordDialog({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Добавить пароль</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </DialogHeader>
 

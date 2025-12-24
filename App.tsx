@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigation } from './components/Navigation';
 import { HomePage } from './components/HomePage';
 import { LoginPage } from './components/LoginPage';
@@ -10,11 +10,41 @@ type Page = 'home' | 'login' | 'app';
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/vault/entries/all', {
+          credentials: 'include',
+        });
+        if (response.status === 200) {
+          setIsAuthenticated(true);
+          setCurrentPage('app');
+        }
+      } catch (error) {
+        console.log('Not authenticated');
+      }
+      setIsLoading(false);
+    };
+    checkAuth();
+  }, []);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
     setCurrentPage('app');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderPage = () => {
     if (currentPage === 'app' && !isAuthenticated) {
