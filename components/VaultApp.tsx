@@ -7,6 +7,10 @@ import { AddEditPasswordDialog } from './AddEditPasswordDialog';
 import { Dashboard } from './Dashboard';
 import { ThemeToggle } from './ThemeToggle';
 import { toast } from 'sonner';
+import { VaultGate } from './VaultGate';
+import { useVaultCrypto } from './crypto/VaultCryptoContext';
+import { decryptString, encryptString } from '../crypto/aesgcm';
+import { fromBase64, toBase64 } from '../crypto/base64';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +29,7 @@ import {
   SelectValue,
 } from './ui/select';
 
+// Flow: Auth -> Dashboard -> Click Vault -> GET meta -> (setup/unlock) -> DEK in memory -> load entries -> decrypt data.
 export function VaultApp() {
   const [passwords, setPasswords] = useState<Password[]>([]);
   const [allPasswords, setAllPasswords] = useState<Password[]>([]);
@@ -34,6 +39,8 @@ export function VaultApp() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPassword, setEditingPassword] = useState<Password | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [vaultGateOpen, setVaultGateOpen] = useState(false);
+  const { dek, isUnlocked } = useVaultCrypto();
 
   const checkAuthAndRedirect = (response: Response) => {
     if (response.status === 403) {
@@ -43,7 +50,20 @@ export function VaultApp() {
     return false;
   };
 
+  const decryptEntryPassword = async (item: any) => {
+    if (!dek) {
+      throw new Error('vault_locked');
+    }
+    if (!item.passwordCipher || !item.passwordIv) {
+      throw new Error('missing_password_cipher');
+    }
+    const cipherBytes = fromBase64(item.passwordCipher);
+    const ivBytes = fromBase64(item.passwordIv);
+    return decryptString(cipherBytes, ivBytes, dek);
+  };
+
   const loadAllPasswords = async () => {
+    if (!dek) return;
     try {
       const response = await fetch('http://localhost:8080/vault/entries/all', {
         credentials: 'include',
@@ -51,35 +71,52 @@ export function VaultApp() {
       if (checkAuthAndRedirect(response)) return;
       if (response.status === 200) {
         const data = await response.json();
-        const formattedPasswords = data.map((item: any) => ({
-          id: item.id.toString(),
-          title: item.title,
-          username: item.email,
-          password: item.data,
-          url: item.website,
-          category: item.categoryName,
-          notes: item.note || '',
-          createdAt: Date.now(),
-        }));
+        const formattedPasswords = await Promise.all(
+          data.map(async (item: any) => ({
+            id: item.id.toString(),
+            title: item.title,
+            username: item.email,
+            password: await decryptEntryPassword(item),
+            url: item.website,
+            category: item.categoryName,
+            notes: item.note || '',
+            createdAt: Date.now(),
+          })),
+        );
         setAllPasswords(formattedPasswords);
         setPasswords(formattedPasswords);
       }
     } catch (error) {
       console.error('Failed to load passwords:', error);
+      toast.error('Не удалось расшифровать пароли');
     }
   };
 
-  // Load all passwords once on mount
   useEffect(() => {
-    loadAllPasswords();
-  }, []);
+    if (!isUnlocked) {
+      setAllPasswords([]);
+      setPasswords([]);
+    }
+  }, [isUnlocked]);
+
+  // Load all passwords only when vault is unlocked and opened
+  useEffect(() => {
+    if (isUnlocked && currentView === 'vault') {
+      loadAllPasswords();
+    }
+  }, [isUnlocked, currentView]);
 
   // Filter passwords by category
   useEffect(() => {
+    if (!isUnlocked || currentView !== 'vault') {
+      setPasswords([]);
+      return;
+    }
     if (selectedCategory === 'All') {
       setPasswords(allPasswords);
     } else {
       const loadCategoryPasswords = async () => {
+        if (!dek) return;
         try {
           const url = `http://localhost:8080/vault/entries?categoryName=${encodeURIComponent(getCategoryNameInRussian(selectedCategory))}`;
           
@@ -89,20 +126,23 @@ export function VaultApp() {
           if (checkAuthAndRedirect(response)) return;
           if (response.status === 200) {
             const data = await response.json();
-            const formattedPasswords = data.map((item: any) => ({
-              id: item.id.toString(),
-              title: item.title,
-              username: item.email,
-              password: item.data,
-              url: item.website,
-              category: item.categoryName,
-              notes: item.note || '',
-              createdAt: Date.now(),
-            }));
+            const formattedPasswords = await Promise.all(
+              data.map(async (item: any) => ({
+                id: item.id.toString(),
+                title: item.title,
+                username: item.email,
+                password: await decryptEntryPassword(item),
+                url: item.website,
+                category: item.categoryName,
+                notes: item.note || '',
+                createdAt: Date.now(),
+              })),
+            );
             setPasswords(formattedPasswords);
           }
         } catch (error) {
           console.error('Failed to load passwords:', error);
+          toast.error('Не удалось расшифровать пароли');
         }
       };
       
@@ -110,7 +150,7 @@ export function VaultApp() {
         loadCategoryPasswords();
       }
     }
-  }, [selectedCategory, allPasswords]);
+  }, [selectedCategory, allPasswords, isUnlocked, currentView, dek]);
 
   const getCategoryNameInRussian = (category: string) => {
     const categoryMap: { [key: string]: string } = {
@@ -125,6 +165,21 @@ export function VaultApp() {
   };
 
   const handleSavePassword = async (passwordData: Omit<Password, 'id' | 'createdAt'>) => {
+    if (!dek) {
+      toast.error('Хранилище заблокировано');
+      return;
+    }
+    let passwordCipher = '';
+    let passwordIv = '';
+    try {
+      const encrypted = await encryptString(passwordData.password, dek);
+      passwordCipher = toBase64(encrypted.cipherBytes);
+      passwordIv = toBase64(encrypted.iv);
+    } catch (error) {
+      toast.error('Не удалось зашифровать пароль');
+      return;
+    }
+
     if (editingPassword) {
       // Update existing password via backend
       try {
@@ -140,7 +195,8 @@ export function VaultApp() {
             website: passwordData.url || '',
             email: passwordData.username,
             categoryName: passwordData.category,
-            data: passwordData.password,
+            passwordCipher,
+            passwordIv,
             note: passwordData.notes || '',
           }),
         });
@@ -171,7 +227,8 @@ export function VaultApp() {
             website: passwordData.url || '',
             email: passwordData.username,
             categoryName: passwordData.category,
-            data: passwordData.password,
+            passwordCipher,
+            passwordIv,
             note: passwordData.notes || '',
           }),
         });
@@ -226,6 +283,14 @@ export function VaultApp() {
     setDialogOpen(true);
   };
 
+  const handleVaultNavigation = () => {
+    if (isUnlocked) {
+      setCurrentView('vault');
+      return;
+    }
+    setVaultGateOpen(true);
+  };
+
   const filteredPasswords = passwords.filter((password) => {
     const matchesSearch =
       password.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -255,7 +320,7 @@ export function VaultApp() {
               </Button>
               <Button
                 variant={currentView === 'vault' ? 'default' : 'ghost'}
-                onClick={() => setCurrentView('vault')}
+                onClick={handleVaultNavigation}
               >
                 Хранилище
               </Button>
@@ -382,6 +447,15 @@ export function VaultApp() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <VaultGate
+        open={vaultGateOpen}
+        onClose={() => setVaultGateOpen(false)}
+        onUnlocked={() => {
+          setVaultGateOpen(false);
+          setCurrentView('vault');
+        }}
+      />
     </div>
   );
 }

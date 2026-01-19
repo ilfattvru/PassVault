@@ -6,9 +6,10 @@ type Page = 'home' | 'login' | 'app';
 interface NavigationProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
+  onLogout?: () => void;
 }
 
-export function Navigation({ currentPage, onNavigate }: NavigationProps) {
+export function Navigation({ currentPage, onNavigate, onLogout }: NavigationProps) {
   const isAppPage = currentPage === 'app';
 
   return (
@@ -43,8 +44,8 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
               </>
             )}
             {isAppPage && (
-              <Button variant="ghost" onClick={() => onNavigate('home')}>
-                Вернуться на сайт
+              <Button variant="ghost" onClick={onLogout ?? (() => onNavigate('home'))}>
+                Выйти
               </Button>
             )}
           </nav>

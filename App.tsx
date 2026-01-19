@@ -3,14 +3,16 @@ import { Navigation } from './components/Navigation';
 import { HomePage } from './components/HomePage';
 import { LoginPage } from './components/LoginPage';
 import { VaultApp } from './components/VaultApp';
+import { VaultCryptoProvider, useVaultCrypto } from './components/crypto/VaultCryptoContext';
 import { Toaster } from 'sonner';
 
 type Page = 'home' | 'login' | 'app';
 
-export default function App() {
+function AppShell() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { lockVault } = useVaultCrypto();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -35,6 +37,12 @@ export default function App() {
     setCurrentPage('app');
   };
 
+  const handleLogout = async () => {
+    lockVault();
+    setIsAuthenticated(false);
+    setCurrentPage('home');
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -57,7 +65,11 @@ export default function App() {
       case 'login':
         return <LoginPage onLogin={handleLogin} />;
       case 'app':
-        return <VaultApp />;
+        return (
+          <VaultCryptoProvider>
+            <VaultApp />
+          </VaultCryptoProvider>
+        );
       default:
         return <HomePage onNavigate={setCurrentPage} />;
     }
@@ -66,7 +78,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background">
       <Toaster />
-      <Navigation currentPage={currentPage} onNavigate={setCurrentPage} />
+      <Navigation
+        currentPage={currentPage}
+        onNavigate={setCurrentPage}
+        onLogout={handleLogout}
+      />
       {renderPage()}
       
       {/* Footer */}
@@ -123,5 +139,13 @@ export default function App() {
         </footer>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <VaultCryptoProvider>
+      <AppShell />
+    </VaultCryptoProvider>
   );
 }
