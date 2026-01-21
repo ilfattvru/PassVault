@@ -30,5 +30,9 @@ function walkDirectory(dir) {
   }
 }
 
-walkDirectory('./components ');
-walkDirectory('.');
+walkDirectory('./app');
+walkDirectory('./pages');
+walkDirectory('./features');
+walkDirectory('./entities');
+walkDirectory('./shared');
+walkDirectory('./widgets');

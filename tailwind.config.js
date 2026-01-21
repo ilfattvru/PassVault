@@ -2,10 +2,13 @@
 export default {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
-    './**/*.{ts,tsx}',
+    './pages/**/*.{ts,tsx}',
+    './features/**/*.{ts,tsx}',
+    './entities/**/*.{ts,tsx}',
+    './shared/**/*.{ts,tsx}',
+    './widgets/**/*.{ts,tsx}',
+    './index.html',
   ],
   prefix: "",
   theme: {
