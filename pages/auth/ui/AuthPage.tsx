@@ -31,7 +31,7 @@ export function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isLogin && formData.password !== formData.confirmPassword) {
       toast.error('Пароли не совпадают');
       return;
@@ -43,7 +43,7 @@ export function AuthPage() {
     }
 
     try {
-      const body = isLogin 
+      const body = isLogin
         ? { login: formData.email, password: formData.password }
         : { login: formData.email, password: formData.password, passwordConfirm: formData.confirmPassword };
 
@@ -57,18 +57,18 @@ export function AuthPage() {
 
       if (response.status === 200) {
         if (isLogin) {
-          toast.success('Вход выполнен успешно!');
-          login();
-          const redirectTo = (location.state as { from?: Location })?.from?.pathname || '/app';
+          toast.success('Вход выполнен успешно');
+          await login();
+          const redirectTo = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/app';
           navigate(redirectTo, { replace: true });
         } else {
-          toast.success('Регистрация завершена!');
+          toast.success('Регистрация завершена');
         }
       } else {
         const errorText = await response.text();
         toast.error(errorText || 'Произошла ошибка');
       }
-    } catch (error) {
+    } catch {
       toast.error('Ошибка подключения к серверу');
     }
   };
@@ -79,7 +79,6 @@ export function AuthPage() {
         <ThemeToggle />
       </div>
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-foreground text-background mb-4">
             <Shield className="h-8 w-8" />
@@ -90,10 +89,8 @@ export function AuthPage() {
           </p>
         </div>
 
-        {/* Login/Register Card */}
         <Card className="p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
             <div>
               <label htmlFor="email" className="block mb-2">
                 Электронная почта
@@ -112,7 +109,6 @@ export function AuthPage() {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label htmlFor="password" className="block mb-2">
                 Пароль
@@ -138,7 +134,6 @@ export function AuthPage() {
               </div>
             </div>
 
-            {/* Confirm Password (Register only) */}
             {!isLogin && (
               <div>
                 <label htmlFor="confirmPassword" className="block mb-2">
@@ -161,7 +156,6 @@ export function AuthPage() {
               </div>
             )}
 
-            {/* Remember Me / Forgot Password */}
             {isLogin && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -186,12 +180,10 @@ export function AuthPage() {
               </div>
             )}
 
-            {/* Submit Button */}
             <Button type="submit" className="w-full">
               {isLogin ? 'Войти' : 'Зарегистрироваться'}
             </Button>
 
-            {/* Toggle Login/Register */}
             <div className="text-center pt-4 border-t">
               <p className="text-muted-foreground">
                 {isLogin ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}{' '}
@@ -210,7 +202,6 @@ export function AuthPage() {
           </form>
         </Card>
 
-        {/* Additional Info */}
         <p className="text-center text-muted-foreground mt-6">
           Защищено военным шифрованием AES-256
         </p>

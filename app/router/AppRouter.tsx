@@ -3,7 +3,9 @@ import { AppLayout } from '../layout/AppLayout';
 import { HomePage } from '@/pages/home/ui/HomePage';
 import { AuthPage } from '@/pages/auth/ui/AuthPage';
 import { VaultPage } from '@/pages/vault/ui/VaultPage';
+import { ManagementPage } from '@/pages/management/ui/ManagementPage';
 import { RequireAuth } from './RequireAuth';
+import { RequireManageAccess } from './RequireManageAccess';
 
 export function AppRouter() {
   return (
@@ -16,6 +18,16 @@ export function AppRouter() {
           element={
             <RequireAuth>
               <VaultPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/app/management"
+          element={
+            <RequireAuth>
+              <RequireManageAccess>
+                <ManagementPage />
+              </RequireManageAccess>
             </RequireAuth>
           }
         />

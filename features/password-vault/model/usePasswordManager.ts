@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import type { Password } from '@/entities/password/model/types';
 import { decryptString, encryptString } from '@/shared/lib/crypto/aesgcm';
 import { fromBase64, toBase64 } from '@/shared/lib/crypto/base64';
-import { apiFetch, isAuthForbidden } from '@/shared/api/http';
+import { apiFetch, isForbidden, isUnauthorized } from '@/shared/api/http';
 
 type UsePasswordManagerOptions = {
   dek: Uint8Array | null;
@@ -17,8 +17,8 @@ export function usePasswordManager({ dek, isUnlocked, isActive }: UsePasswordMan
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const redirectIfForbidden = useCallback((response: Response) => {
-    if (isAuthForbidden(response)) {
+  const handleAuthResponse = useCallback((response: Response) => {
+    if (isUnauthorized(response)) {
       window.location.href = '/login';
       return true;
     }
@@ -58,7 +58,7 @@ export function usePasswordManager({ dek, isUnlocked, isActive }: UsePasswordMan
     if (!dek) return;
     try {
       const response = await apiFetch('/vault/entries/all');
-      if (redirectIfForbidden(response)) return;
+      if (handleAuthResponse(response)) return;
       if (response.status === 200) {
         const data = await response.json();
         const formattedPasswords = await Promise.all(data.map(mapEntry));
@@ -69,7 +69,7 @@ export function usePasswordManager({ dek, isUnlocked, isActive }: UsePasswordMan
       console.error('Failed to load passwords:', error);
       toast.error('Не удалось расшифровать пароли');
     }
-  }, [dek, mapEntry, redirectIfForbidden]);
+  }, [dek, mapEntry, handleAuthResponse]);
 
   useEffect(() => {
     if (!isUnlocked) {
@@ -111,7 +111,7 @@ export function usePasswordManager({ dek, isUnlocked, isActive }: UsePasswordMan
               getCategoryNameInRussian(selectedCategory),
             )}`,
           );
-          if (redirectIfForbidden(response)) return;
+          if (handleAuthResponse(response)) return;
           if (response.status === 200) {
             const data = await response.json();
             const formattedPasswords = await Promise.all(data.map(mapEntry));
@@ -127,7 +127,7 @@ export function usePasswordManager({ dek, isUnlocked, isActive }: UsePasswordMan
         loadCategoryPasswords();
       }
     }
-  }, [selectedCategory, allPasswords, isUnlocked, isActive, dek, mapEntry, redirectIfForbidden]);
+  }, [selectedCategory, allPasswords, isUnlocked, isActive, dek, mapEntry, handleAuthResponse]);
 
   const savePassword = useCallback(
     async (passwordData: Omit<Password, 'id' | 'createdAt'>, editingId?: string) => {
@@ -168,19 +168,23 @@ export function usePasswordManager({ dek, isUnlocked, isActive }: UsePasswordMan
           },
         );
 
-        if (redirectIfForbidden(response)) return false;
+        if (handleAuthResponse(response)) return false;
         if (response.status === 200) {
           await loadAllPasswords();
           toast.success(editingId ? 'Пароль обновлен успешно' : 'Пароль сохранен успешно');
           return true;
         }
-        toast.error(editingId ? 'Не удалось обновить пароль' : 'Не удалось сохранить пароль');
+        if (isForbidden(response)) {
+          toast.error('У вас нет прав на изменение этой записи');
+        } else {
+          toast.error(editingId ? 'Не удалось обновить пароль' : 'Не удалось сохранить пароль');
+        }
       } catch (error) {
         toast.error('Ошибка подключения к серверу');
       }
       return false;
     },
-    [dek, loadAllPasswords, redirectIfForbidden],
+    [dek, loadAllPasswords, handleAuthResponse],
   );
 
   const deletePassword = useCallback(
@@ -189,19 +193,23 @@ export function usePasswordManager({ dek, isUnlocked, isActive }: UsePasswordMan
         const response = await apiFetch(`/vault/entries/${id}`, {
           method: 'DELETE',
         });
-        if (redirectIfForbidden(response)) return false;
+        if (handleAuthResponse(response)) return false;
         if (response.status === 200) {
           await loadAllPasswords();
           toast.success('Пароль удален успешно');
           return true;
         }
-        toast.error('Не удалось удалить пароль');
+        if (isForbidden(response)) {
+          toast.error('У вас нет прав на удаление этой записи');
+        } else {
+          toast.error('Не удалось удалить пароль');
+        }
       } catch (error) {
         toast.error('Ошибка подключения к серверу');
       }
       return false;
     },
-    [loadAllPasswords, redirectIfForbidden],
+    [loadAllPasswords, handleAuthResponse],
   );
 
   const filteredPasswords = useMemo(() => {

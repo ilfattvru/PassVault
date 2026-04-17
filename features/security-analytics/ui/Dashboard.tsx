@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from 'react';
 import { Card } from '@/shared/ui/card';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
@@ -21,6 +22,17 @@ export function Dashboard({ passwords, onCategoriesChanged }: DashboardProps) {
     totalCategories,
   } = useSecurityAnalytics(passwords);
 
+  // Стабилизируем initialCategories – массив не будет меняться, пока не изменится categoryCounts
+  const initialCategories = useMemo(
+    () => Object.keys(categoryCounts),
+    [categoryCounts]
+  );
+
+  // Стабилизируем колбэк – если onCategoriesChanged не меняется, он останется тем же
+  const stableOnCategoriesChanged = useCallback(() => {
+    onCategoriesChanged?.();
+  }, [onCategoriesChanged]);
+
   const {
     categories,
     newCategory,
@@ -34,14 +46,14 @@ export function Dashboard({ passwords, onCategoriesChanged }: DashboardProps) {
     handleUpdateCategory,
     handleDeleteCategory,
   } = useCategoryManager({
-    initialCategories: Object.keys(categoryCounts),
-    onChange: onCategoriesChanged,
+    initialCategories,
+    onChange: stableOnCategoriesChanged,
   });
 
   return (
     <div className="space-y-6">
       <div>
-        <h2>Панель безопасности</h2>
+        <h2 className="text-2xl font-semibold">Панель безопасности</h2>
         <p className="text-muted-foreground">Обзор безопасности ваших паролей</p>
       </div>
 
@@ -57,7 +69,7 @@ export function Dashboard({ passwords, onCategoriesChanged }: DashboardProps) {
             </div>
           </div>
           <div>
-            <h1 className="mb-1">{totalCount}</h1>
+            <div className="text-3xl font-bold mb-1">{totalCount}</div>
             <p className="text-muted-foreground">Надёжно хранятся в вашем хранилище</p>
           </div>
         </Card>
@@ -72,9 +84,9 @@ export function Dashboard({ passwords, onCategoriesChanged }: DashboardProps) {
             </div>
           </div>
           <div>
-            <h1 className="mb-1" style={{ color: weakPasswords > 0 ? '#ca8a04' : 'inherit' }}>
+            <div className="text-3xl font-bold mb-1" style={{ color: weakPasswords > 0 ? '#ca8a04' : 'inherit' }}>
               {weakPasswords}
-            </h1>
+            </div>
             <p className="text-muted-foreground">Нужно усилить</p>
           </div>
         </Card>
@@ -89,7 +101,7 @@ export function Dashboard({ passwords, onCategoriesChanged }: DashboardProps) {
             </div>
           </div>
           <div>
-            <h1 className="mb-1">{totalCategories}</h1>
+            <div className="text-3xl font-bold mb-1">{totalCategories}</div>
             <p className="text-muted-foreground">Различных типов аккаунтов</p>
           </div>
         </Card>
@@ -104,7 +116,7 @@ export function Dashboard({ passwords, onCategoriesChanged }: DashboardProps) {
             </div>
           </div>
           <div>
-            <h1 className="mb-1" style={{ color: '#16a34a' }}>{securityScore}%</h1>
+            <div className="text-3xl font-bold mb-1" style={{ color: '#16a34a' }}>{securityScore}%</div>
             <p className="text-muted-foreground">На основе силы паролей</p>
           </div>
         </Card>
@@ -112,7 +124,7 @@ export function Dashboard({ passwords, onCategoriesChanged }: DashboardProps) {
 
       {/* Category Distribution */}
       <Card className="p-6">
-        <h3 className="mb-4">Распределение по категориям</h3>
+        <h3 className="text-xl font-semibold mb-4">Распределение по категориям</h3>
         <div className="space-y-3">
           {categories.map((category) => (
             <div key={category} className="flex items-center justify-between gap-3">
@@ -169,7 +181,7 @@ export function Dashboard({ passwords, onCategoriesChanged }: DashboardProps) {
       <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
         <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
         <div className="ml-3">
-          <h4 className="mb-1" style={{ color: '#2563eb' }}>Demo Version Notice</h4>
+          <h4 className="font-semibold mb-1" style={{ color: '#2563eb' }}>Demo Version Notice</h4>
           <AlertDescription className="text-blue-900 dark:text-blue-100">
             This is a demonstration password manager. Your data is stored locally in your browser and may be lost when you clear your browser data.
             <br />

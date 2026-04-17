@@ -99,7 +99,7 @@ export function useCategoryManager({ initialCategories, onChange }: UseCategoryM
   const handleDeleteCategory = useCallback(
     async (category: string) => {
       try {
-        const response = await apiFetch('/vault/categorie/delete', {
+        const response = await apiFetch('/vault/categories/delete', {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',

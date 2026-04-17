@@ -10,4 +10,6 @@ export const apiFetch = (path: string, options: ApiFetchOptions = {}) => {
   });
 };
 
-export const isAuthForbidden = (response: Response) => response.status === 403;
+export const isUnauthorized = (response: Response) => response.status === 401;
+export const isForbidden = (response: Response) => response.status === 403;
+export const isAuthForbidden = (response: Response) => isUnauthorized(response);
